@@ -5,41 +5,165 @@
 #include <stdio.h>
 #include "mmm.h"
 
+int **array1;
+int **array2;
+int **final_array;
+int **verify_array;
+int threads;
+int size;
+
 /**
  * Allocate and initialize the matrices on the heap. Populate
  * the input matrices with random integers from 0 to 99
  */
-void mmm_init() {
-	// TODO
+void mmm_init(int sizeIn, int threadsIn)
+{
+	size = sizeIn;
+	threads = threadsIn;
+
+	// init array size
+	//  malloc a size N array of pointers to ints
+	array1 = (int **)malloc(sizeof(int *) * size);
+
+	// iterate through each row and malloc a size N array of ints
+	for (int i = 0; i < size; i++)
+	{
+		array1[i] = (int *)malloc(sizeof(int) * size);
+
+		// fill row with values
+		for (int j = 0; j < size; j++)
+		{
+			array1[i][j] = get_random_int(99);
+		}
+	}
+
+	// init array size
+	//  malloc a size N array of pointers to ints
+	array2 = (int **)malloc(sizeof(int *) * size);
+
+	// iterate through each row and malloc a size N array of ints
+	for (int i = 0; i < size; i++)
+	{
+		array2[i] = (int *)malloc(sizeof(int) * size);
+
+		// fill row with values
+		for (int j = 0; j < size; j++)
+		{
+			array2[i][j] = get_random_int(99);
+		}
+	}
+
+	final_array = (int **)malloc(sizeof(int *) * size);
+
+	// iterate through each row and malloc a size N array of ints
+	for (int i = 0; i < size; i++)
+	{
+		final_array[i] = (int *)malloc(sizeof(int) * size);
+	}
+
+	verify_array = (int **)malloc(sizeof(int *) * size);
+	// iterate through each row and malloc a size N array of ints
+	for (int i = 0; i < size; i++)
+	{
+		verify_array[i] = (int *)malloc(sizeof(int) * size);
+	}
 }
 
 /**
  * Reset a given matrix to zeroes
  * @param matrix pointer to a 2D array
  */
-void mmm_reset(double **matrix) {
-	// TODO
+void mmm_reset(int **matrix)
+{
+	for (int i = 0; i < size; i++)
+	{
+		for (int j = 0; j < size; j++)
+		{
+			matrix[i][j] = 0;
+		}
+	}
 }
 
 /**
  * Free up memory allocated to all matrices
  */
-void mmm_freeup() {
-	// TODO
+void mmm_freeup()
+{
+	// free inner arrays
+	for (int i = 0; i < size; i++)
+	{
+		free(array1[i]);
+	}
+	free(array1);
+
+	// free inner arrays
+	for (int i = 0; i < size; i++)
+	{
+		free(array2[i]);
+	}
+	free(array2);
+
+	for (int i = 0; i < size; i++)
+	{
+		free(final_array[i]);
+	}
+	free(final_array);
+
+	for (int i = 0; i < size; i++)
+	{
+		free(verify_array[i]);
+	}
+	free(verify_array);
 }
 
 /**
  * Sequential MMM
  */
-void mmm_seq() {
-	// TODO - code to perform sequential MMM
+void mmm_seq()
+{
+	// multiply two matrices into the final array
+
+	for (int k = 0; k < size; k++)
+	{
+
+		for (int i = 0; i < size; i++)
+		{
+			int total = 0;
+			for (int j = 0; j < size; j++)
+			{
+				total += (array1[k][j] * array2[j][i]);
+			}
+			final_array[k][i] = total;
+		}
+	}
 }
 
 /**
  * Parallel MMM
  */
-void *mmm_par(void *args) {
-	// TODO - code to perform parallel MMM
+void *mmm_par(void *args)
+{
+	struct Mat_Params params = *(struct Mat_Params *)args;
+
+	for (int k = params.start_row; k < params.end_row; k++)
+	{
+
+		for (int i = 0; i < size; i++)
+		{
+			int total = 0;
+
+			for (int j = 0; j < size; j++)
+			{
+				int val1 = array1[k][j];
+				int val2 = array2[j][i];
+				total = total + (val1 * val2);
+			}
+
+			final_array[k][i] = total;
+		}
+	}
+
+	return 0;
 }
 
 /**
@@ -49,7 +173,52 @@ void *mmm_par(void *args) {
  * @return the largest error between two corresponding elements
  * in the result matrices
  */
-double mmm_verify() {
-	// TODO
-	return -1;
+double mmm_verify()
+{
+
+	// copy everything from the final array to the verify array
+	for (int i = 0; i < size; i++)
+	{
+		verify_array[i] = (int *)malloc(sizeof(int) * size);
+
+		// fill row with values
+		for (int j = 0; j < size; j++)
+		{
+			verify_array[i][j] = final_array[i][j];
+		}
+	}
+
+	// perform a sequential calculation
+	mmm_seq();
+
+	// find the largest different between the two arrays
+	double dif = 0;
+
+
+	for (int i = 0; i < size; i++)
+	{
+
+		// fill row with values
+		for (int j = 0; j < size; j++)
+		{
+			if (verify_array[i][j] != final_array[i][j])
+			{
+				int curDif = abs(verify_array[i][j] - final_array[i][j]);
+				if (curDif > dif)
+				{
+					dif = curDif;
+				}
+			}
+		}
+	}
+
+	return dif;
+}
+
+/**
+ * returns a random value from zero to the max value
+ */
+int get_random_int(int max)
+{
+	return rand() % (max + 1);
 }
